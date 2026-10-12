@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Secrets - never commit these
+.env
+*.env
+!example.env
+*_env.txt
+welbridg-agent.json
+cloudfare keys.png

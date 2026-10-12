@@ -1,0 +1,31 @@
+# NOTE ON PINS
+# This code is written against the langchain 0.3 generation (langchain.chains,
+# langchain.memory, langchain.tools.Tool). LangChain 1.x moved or removed all of
+# those, so an unpinned install breaks at import. The faiss_index/*.pkl files
+# were also pickled by that generation and may not deserialize under 1.x.
+# Keep these bounds until the service modules are migrated.
+flask
+python-dotenv
+openai>=1.60,<2
+aiohttp
+requests
+SQLAlchemy>=2.0,<3
+pymysql
+cryptography
+faiss-cpu
+gunicorn
+google-cloud-storage
+python-telegram-bot
+google-cloud-aiplatform
+
+# langchain generation - see note above
+langchain-core>=0.3,<0.4
+langchain>=0.3,<0.4
+langchain-openai>=0.2,<0.4
+langchain-community>=0.3,<0.4
+langchain-google-community[gmail]>=2.0,<3.0
+langgraph>=0.2,<0.4
+
+# File storage on Cloudflare R2 (S3-compatible API). 1.36+ is needed for the
+# checksum settings in app/services/s3_storage.py.
+boto3>=1.36

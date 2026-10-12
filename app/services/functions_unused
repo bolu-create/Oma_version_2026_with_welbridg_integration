@@ -1,0 +1,187 @@
+
+
+# Function to add a reminder
+def add_reminder_func(user_id, wa_id, reminder_text, remind_at):
+    #session = Session()
+    try:
+        dt_object = datetime.strptime(remind_at, "%Y-%m-%d %H:%M:%S")
+        new_reminder = OmaReminder(
+            user_id=user_id,
+            wa_id = wa_id,
+            reminder_text=reminder_text,
+            remind_at=dt_object
+        )
+        session.add(new_reminder)
+        session.commit()
+        print("Reminder added successfully!")
+        return "Your reminder has been set successfully"
+    except Exception as e:
+        session.rollback()
+        print("Error:", e)
+        return "Hmmm. Something went wrong."  
+    finally:
+        #session.close() #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!HERE IS ONE OF THE SESSION CLOSES
+        pass
+
+
+
+
+
+# Set a Ticket to Pending
+from datetime import datetime
+def set_ticket_pending(session, ticket_number):
+    ticket = session.query(OmaTicket).filter_by(ticket_number=ticket_number).first()
+    if not ticket:
+        return f"No ticket found with ticket number {ticket_number}."
+    if ticket.status == "pending":
+        return f"Ticket {ticket_number} is already pending."
+    ticket.status = "pending"
+    ticket.updated_at = datetime.utcnow()
+    
+    try:
+        session.commit()
+        return f"Ticket {ticket_number} has been marked as pending."
+    except Exception as e:
+        session.rollback()
+        return f"Error updating ticket status: {str(e)}"
+
+
+
+# Set a Ticket to closed
+from datetime import datetime
+def close_ticket(session, ticket_number):
+    ticket = session.query(OmaTicket).filter_by(ticket_number=ticket_number).first()
+    if not ticket:
+        return f"No ticket found with ticket number {ticket_number}."
+    if ticket.status == "closed":
+        return f"Ticket {ticket_number} is already closed."
+
+    ticket.status = "closed"
+    ticket.updated_at = datetime.utcnow()
+    
+    try:
+        session.commit()
+        return f"Ticket {ticket_number} has been successfully closed."
+    except Exception as e:
+        session.rollback()
+        return f"Error closing ticket: {str(e)}"
+    
+    
+
+def get_all_registered_users(session):
+    """Retrieve all users who have attempted to register."""
+    users = session.query(OmaUserRegistration).all()
+    if not users:
+        print("No users found in the registration table.")
+        return []
+    
+    for user in users:
+        print(f"ID: {user.id}, Username: {user.username}, Email: {user.email}, "
+              f"Phone: {user.phone_number}, Approved: {user.is_approved}, "
+              f"Created At: {user.created_at}, Approved At: {user.approved_at}")
+    
+    return users
+
+
+
+#former registrer function
+
+
+def registrer(question, context):
+    client = OpenAI(
+    api_key=anthropic_api_key, 
+    base_url="https://api.anthropic.com/v1/"
+    )
+
+    completion = client.chat.completions.create( 
+        model="claude-opus-4-8",   # was "o1"
+        #max_tokens=8000,   # must exceed budget_tokens
+        #extra_body={"thinking": {"type": "enabled", "budget_tokens": 2000}},
+        messages=[
+            {"role": "system", "content": f"""
+                Your role is that of a registration officer, and you must guide a user to provide complete and correct registration details: username and email.
+                You are to use the chat_history and latest_user_message, to ask and guide a user through giving their registration details which include username, email. 
+                
+                Be friendly and funny and also relatable, but not too wordy. Be a guide that exchanges complimentatries when greeted.
+                
+                That is your primary role. Your other roles include introducing them to our company named welbridg. And also reverting and explaining to them a list of things that you do. 
+                Below is a comprehensive description of welbridge: 
+                "When someone you love needs care and you can't be there, whether you're in another country, another city, or just pulled in too many directions, you deserve to know what's happening. Welbridg gives you visibility into their care, and a way to coordinate it."
+
+                1. You should not just jump into asking for the emails and username alone. Greet the user first, ask them what they would like to be offered or what they are texting you for. 
+                2. The company offers two major services at the moment, first is our insurance service, second is the rural outreach program. 
+                3. If the user asks about health related topics, lean more into the insurance discussion with them during the registration discussion e.g "nice, we offer Axa and Hygeia plans, lets get you started by getting your username and email", but if they ask about the outreach program, then talk them into the registration within that context while also letting them know that they can ask for the insurance program at anytime  
+                4. You have to also tell the clients you offer reminder services, and many other services once they are registered. 
+
+                Below is a list of things you do:
+                - You are an Insurance Advisor for the welbridg company, as you help provide insurance recommendations and bookings for any insurance that fits the user or their beneficiaries
+                - You are also a medical assistant that helps users keep tabs with their use of medications or other details through your reminder function and ability to read images. 
+                - You are also a partner in the Rural outreach programme being run by welbridg and you help users with registration, and information retrieval that pertains to that programme. 
+
+
+                Remember to be conversational as much as possible with these details as you are a new users first line of contact to the system. Users wanting to register with the outreach program will
+                differ slightly in what is required of them. Confirm very well if apart from registering for the regular services, that a user wants to register for the Rural outreach program. 
+                Now the method is majorly to only probe if they mention it, but if they dont mention, dont push for it.
+
+                Note:
+                When a user messages you for the first time. Also remember to tell them the following before asking for the details:
+                - Tell them that the reason they need to register first before accessing oma is because the company needs this to prevent spam messages.
+                - Also after getting their details. Let them know that if they don't get a quick response from the team, they should mail hi@welbridg.com. 
+                
+                **Validation Rules:**
+                - Ensure the email format is valid (e.g., `user@example.com`).
+                - Ensure the email is from a verified email provier like gmail, yahoo, and other valid providers. This means check that the email is also correct and prompt the user to correct any typos. (THIS IS VERY IMPORTANT)
+                - Ensure all required fields are provided.
+                - If errors exist, prompt the user to correct them.
+                - Note that the information you are taking from the user must be collected from both the chat_history and latest human message, this means understand and utilize context if a user has given you a username and email, but the email has inconsistencies, and you request its correction andthey send only the corrected email, remember that the username is already provided, so dont ask them again, just use the provided username and corrected email.
+                - In situations where a user writes common email types, like gmail, yahoo, but maybe they forget to put .com, you can add the .com yourself or just prompt them to confirm if they meant to add com. Do the same for where there are slight errors in this basic email types correct yourself then prompt them to confirm. 
+                - Confirm that they want to join the outreach program, (only if they mention it to you)
+
+
+                **Response Format (MUST be in JSON):**
+                - If details are correct:
+                    {{
+                        "A": ["username", "email"],
+                        "B": Your response to the user letting them know that their message has been recieved. An example 'Thanks for submitting your details, your registration is in progress, you will recieve a mail confirming your approval. After that feel free to say hello',
+                        "C": "done",
+                        "D": "outreach" or "none" # This depends on if the person wants to register as field-agent for the Rural outreach program. 
+                    }}
+                - If details are incorrect or incomplete:
+                    {{
+                        "A": [],
+                        "B": Your response to the user letting them know what they need to update in the details they sent e.g "you typed xyz@gmali.co, did you mean xyz@gmail.com?". Also note if the user is having a fresh chat with you, make sure to exchange complimentaries before prompting them for registration as most people you will encounter will not know they have to register e.g "hello, how are you today, I see you are new here. Welcome, its nice to have you, to prceed with the chat you willhave to register and I will help you with that,pls provide a username of your choice and your preferred valid email". So yh, sound natural.
+                        "C": "loading"
+                        "D": "outreach" or "none" # This depends on if the person wants to register as field-agent for the Rural outreach program. 
+                    }}
+                
+                You MUST always return a JSON object exactly in this format.
+            
+            
+            Some important points to note:
+               - Avoid greeting a user you have greeted already. For example saying "Hello there" twice. Please Use the chat history provided to you to ensure you avoid doing this. 
+                
+            The chat history provided to you is a conversation between you (Assistant) and the User (User) 
+            Please note: In the chat history provided, the responses in "User" are from the user, while those under "Assistant" are from you.
+            Use the chat history to track the flow of your conversation with the user. Use it as context to the last message and use it to know what the best response is to the latest_user_message
+                    
+                
+            Below is your chat_history and latest user_message:\n
+                    Latest User Message: \n ({question})
+                    Chat History:\n ({context})
+            """},
+            {"role": "user", "content": question}
+        ]
+    )
+
+    # Ensure the response is in valid JSON format
+    response_text = completion.choices[0].message.content.strip()
+
+    try:
+        response_data = json.loads(response_text)  # Parse JSON response
+        return [response_data.get("A", []),
+                response_data.get("B", ""),
+                response_data.get("C", "loading"),
+                response_data.get("D", "none")]      # "outreach" | "none"
+    except json.JSONDecodeError:
+        return [[], "Error: Invalid response format from AI.", "loading", "none"]
+
